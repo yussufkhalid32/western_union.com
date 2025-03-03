@@ -1,0 +1,135 @@
+/**
+ * @function
+ * @listens One Trust Callback
+ * Function to apply cookie setting back to the application
+ */
+function OptanonWrapper() {
+    let eOT; if (typeof (Event) === 'function') { eOT = new Event('OneTrustGroupsUpdated'); } else { eOT = document.createEvent('OneTrustGroupsUpdated'); eOT.initEvent('submit', true, true); }
+    document.dispatchEvent(eOT); const dateN = new Date(); dateN.setDate(dateN.getDate() + 365);
+    const expires = "expires=" + dateN.toUTCString();
+    let domain = ".westernunion.com";
+    try {
+        if (window && window.location.host && !window.location.host.includes('.westernunion.com')) {
+            domain = window.location.host;
+        }
+    } catch (e) {
+        console.error("OptanonWrapper - not able to get domain");
+    }
+    document.cookie = 'userCookieOptIn' + "=" + OptanonActiveGroups + ";domain=" + domain + ";path=/;expires=" + expires;
+    Optanon.OnConsentChanged(function (e) {
+        sessionStorage.setItem("oneTrustCookie", true);
+        const OptanonAlertBoxClosed = window.getCookie('OptanonAlertBoxClosed'); document.cookie = "OptanonAlertBoxClosed=" + OptanonAlertBoxClosed + ";path=/"; const OptanonConsent = window.getCookie('OptanonConsent'); document.cookie = "OptanonConsent=" + OptanonConsent + ";path=/"; const url = window.location.href || ''; if (url) {
+            const splitUrl = url.split('/'); const country = splitUrl[3];
+            if (country && country.toLowerCase() !== 'us') { location.reload(); }
+        }
+    });
+    if (window.location.href.indexOf('cookie-information') > -1) { try { const cookiePolicyDiv = document.getElementById('optanon-cookie-policy'); if (cookiePolicyDiv && cookiePolicyDiv.innerHTML == "") { Optanon.initializeCookiePolicyHtml(); } } catch (e) { console.log('error in loading OT cookie policy: ' + e); } }
+}
+
+/**
+ * @function
+ * This script will contain all the functional programming
+ * related to One Trust features
+ *  
+ *  -Handling OT changes
+ *  -Handlers and helpers methods that directly work with window reload and window objects
+ *  -OT Cookies details and cookie settings
+ */
+
+const oneTrust = () => {
+    /**
+     * gets current page url
+     */
+    const _pageurl = window.location.href;
+
+    /**
+    * gets status is website of QA or lower environment 
+    */
+    const _isLowerEnvironment = _pageurl.indexOf('-dev') > -1 || _pageurl.indexOf('-qa') > -1 || _pageurl.indexOf('localhost') > -1;
+
+    /**
+     * returns if execution are on lower environment
+     */
+    if (_isLowerEnvironment) return;
+
+    /**
+     * gets current country iso code from url
+     */
+    const _countryIsoCode = _pageurl.indexOf("partner") > -1 ? _pageurl.split('/')[4] : _pageurl.split('/')[3];
+
+    /**
+     * gets onetrust enabled countries from server config
+     */
+    const _thirdPartyConfig = JSON.parse(window.thirdPartyConfigContent || '{}');
+    const _countriesWithOneTrust = (_thirdPartyConfig.OneTrust && _thirdPartyConfig.OneTrust.enabledCountries) ? _thirdPartyConfig.OneTrust.enabledCountries : '';
+
+    /**
+     * gets status is oneturst enabled for current country or not
+     */
+    const _isOneTrustEnabled =  _countryIsoCode && _countriesWithOneTrust && _countriesWithOneTrust.indexOf(_countryIsoCode.toUpperCase()) > -1;
+
+    /**
+     * @function
+     * Sets the domain value for countries where we will enable One Trust
+     * @returns boolean
+     */
+    const getOTDomainscript = () => {
+        const domains = {
+            'AT': 'a70a77d9-eefc-486e-b0a1-138d47aa9456',
+            'BE': 'b2012572-b72d-41b8-84d8-9a1bfe437eb3',
+            'BG': 'c3fbe9d1-fcdd-4be8-a3fc-35923b217c2a',
+            'CY': '18197f0a-6243-4b08-b02b-953babc50425',
+            'CZ': '6e13b22f-8f2e-4e76-ac52-97d96c8d9e7e',
+            'DE': '0c703825-361c-461d-8edb-a7bcd0633331',
+            'DK': '8db04ba5-e758-44f1-ae2f-ea5c605da526',
+            'EE': '82ef72a2-2064-4cc4-b93a-bba4dce76b74',
+            'ES': '1e1b66ac-255c-4f36-b0c4-e832abcf1059',
+            'FI': '7ff13dc5-ba2a-4708-a81b-45d4849d2038',
+            'FR': '7bf2522d-7e08-42b9-8d48-037124fb6b39',
+            'GB': '6a574314-00a8-4e73-9983-0b82d2800be2',
+            'HR': '73848dd5-7128-44f5-9e94-c91ce19ea94e',
+            'AU': '3633a85c-9d31-4e85-a181-5fe7e28cbc46',
+            'HU': '69c36364-748a-413f-8bfe-7b2a053bd142',
+            'IE': 'bdbd83e0-7817-4724-9505-c5595f4bb855',
+            'IS': '28d93be9-9df8-4fa7-b64a-403369c87c43',
+            'IT': '675baf12-1b2e-445d-ad46-3ed95408cb24',
+            'LI': 'c77b65d5-423d-4156-87b4-5057801429b9',
+            'LT': '60d33fe0-894a-4b22-b06a-2109a81a12b7',
+            'LU': '60597770-c427-4e08-85f6-165886c9c5f9',
+            'LV': '75ea7d90-e0bf-4422-98fe-dcbb25443ea6',
+            'MT': '77e5a9eb-b487-467f-b902-8b58906edb02',
+            'NL': 'a4a07669-8316-419a-8633-29fd1ccc7e27',
+            'NO': 'bbc1b0a9-2724-4c41-a82b-6051abffbcbe',
+            'PL': 'f1eee797-96c0-4a44-ad65-43dd7e67cdcd',
+            'PT': 'd3061a90-6d7b-446e-9ded-8814fe5ad910',
+            'RO': '695110cf-f309-4ee6-b906-dd48d9c42fd8',
+            'SE': 'fa9e39c8-57d0-4772-8849-f25c6e054a87',
+            'SI': 'a9727df6-526a-4ca0-9acc-a74781106a33',
+            'SK': '02c8a2ff-8cb6-4157-817f-d77cab11b4d2',
+            'US': '521f4809-fc8f-46b5-986a-d3b8da4f60e0',
+            'AU': '01921f01-805d-77c1-a379-f7aab7489dba',
+            'CA': 'c426ec29-de22-4af2-b4c3-4109312995eb',
+            'CL': '018fc124-809c-7c96-abbc-198ceb7d4b39',
+            'MX': '018fc125-2694-7693-9761-b58e60511a7d',
+            'NZ': '019304e1-2c3c-76ab-919e-e8badc3d8391'
+        };
+        if (typeof window != "undefined" && window.ENV && _countryIsoCode && _countryIsoCode.toUpperCase) {
+            return window.ENV !== "prod" ? domains[_countryIsoCode.toUpperCase()] + '-test' : domains[_countryIsoCode.toUpperCase()];
+        }
+    }
+
+    const ot_configuration = {
+        url: 'https://cdn.cookielaw.org/scripttemplates/otSDKStub.js',
+        defer: !0,
+        async: !0,
+        enable: _isOneTrustEnabled,
+        attributes: {
+            'data-document-language': 'true',
+            'data-domain-script': getOTDomainscript()
+        }
+    }
+
+    loadJS(ot_configuration);
+}
+
+oneTrust();
